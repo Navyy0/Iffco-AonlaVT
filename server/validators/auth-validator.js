@@ -1,64 +1,80 @@
 const { z } = require("zod");
 
+/**
+ * Common validation error messages
+ */
+const ERROR_MESSAGES = {
+  REQUIRED: (field) => `${field} is required`,
+  MIN_LENGTH: (field, length) => `${field} must be at least ${length} characters`,
+  MAX_LENGTH: (field, length) => `${field} must not be more than ${length} characters`,
+  INVALID_EMAIL: "Invalid email address",
+  INVALID_YEAR: "Invalid year",
+  PERCENTAGE_RANGE: "Percentage must be between 0 and 100",
+};
+
+/**
+ * Common validation rules
+ */
+const commonValidators = {
+  /**
+   * Common string field validator with min and max length
+   */
+  stringField: (fieldName, { min = 1, max = 255 } = {}) =>
+    z.string({ required_error: ERROR_MESSAGES.REQUIRED(fieldName) })
+      .trim()
+      .min(min, { message: ERROR_MESSAGES.MIN_LENGTH(fieldName, min) })
+      .max(max, { message: ERROR_MESSAGES.MAX_LENGTH(fieldName, max) }),
+
+  /**
+   * Email validator
+   */
+  email: z.string({ required_error: ERROR_MESSAGES.REQUIRED("Email") })
+    .trim()
+    .email({ message: ERROR_MESSAGES.INVALID_EMAIL })
+    .min(3, { message: ERROR_MESSAGES.MIN_LENGTH("Email", 3) })
+    .max(255, { message: ERROR_MESSAGES.MAX_LENGTH("Email", 255) }),
+
+  /**
+   * Password validator
+   */
+  password: z.string({ required_error: ERROR_MESSAGES.REQUIRED("Password") })
+    .min(7, { message: ERROR_MESSAGES.MIN_LENGTH("Password", 7) })
+    .max(1024, { message: ERROR_MESSAGES.MAX_LENGTH("Password", 1024) }),
+};
+
+/**
+ * Login schema validation
+ */
 const loginSchema = z.object({
-  email: z
-    .string({ required_error: "Email is required" })
-    .trim()
-    .email({ message: "Invalid email address" })
-    .min(3, { message: "Email must be at least of 3 characters" })
-    .max(255, { message: "Email must not be more than 255 characters" }),
-  password: z
-    .string({ required_error: "Password is required" })
-    .min(7, { message: "Password must be at least of 6 characters" })
-    .max(1024, "Password can't be greater than 1024 characters"),
+  email: commonValidators.email,
+  password: commonValidators.password,
 });
 
-// Creating an object schema
-const signupSchema = loginSchema.extend({
-  username: z
-    .string({ required_error: "Name is required" })
-    .trim()
-    .min(3, { message: "Name must be at least of 3 characters" })
-    .max(255, { message: "Name must not be more than 255 characters" }),
-  email: z
-    .string({ required_error: "Email is required" })
-    .trim()
-    .email({ message: "Invalid email address" })
-    .min(3, { message: "Email must be at least of 3 characters" })
-    .max(255, { message: "Email must not be more than 255 characters" }),
-  phone: z
-    .string({ required_error: "Phone is required" })
-    .trim()
-    .min(10, { message: "Phone must be at least of 10 characters" })
-    .max(20, { message: "Phone must not be more than 20 characters" }),
-  password: z
-    .string({ required_error: "Password is required" })
-    .min(7, { message: "Password must be at least of 6 characters" })
-    .max(1024, "Password can't be greater than 1024 characters"),
-  city: z
-    .string({ required_error: "City is required" })
-    .trim()
-    .min(1, { message: "City is required" }),
-  degree: z
-    .string({ required_error: "Degree is required" })
-    .trim()
-    .min(1, { message: "Degree is required" }),
-  percentage: z
-    .number({ required_error: "Percentage is required" })
-    .min(0, { message: "Percentage must be between 0 and 100" })
-    .max(100, { message: "Percentage must be between 0 and 100" }),
-  yearOfCompletion: z
-    .number({ required_error: "Year of completion is required" })
-    .min(1900, { message: "Invalid year" }),
-  college: z
-    .string({ required_error: "College is required" })
-    .trim()
-    .min(1, { message: "College is required" }),
-  branch: z
-    .string({ required_error: "Branch is required" })
-    .trim()
-    .min(1, { message: "Branch is required" }),
+/**
+ * Signup/Registration schema validation
+ * Extends login schema with additional user information
+ */
+const signupSchema = z.object({
+  username: commonValidators.stringField("Name", { min: 3 }),
+  email: commonValidators.email,
+  phone: commonValidators.stringField("Phone", { min: 10, max: 20 }),
+  password: commonValidators.password,
+  // Educational Information
+  college: commonValidators.stringField("College"),
+  degree: commonValidators.stringField("Degree"),
+  branch: commonValidators.stringField("Branch"),
+  percentage: z.number({ required_error: ERROR_MESSAGES.REQUIRED("Percentage") })
+    .min(0, { message: ERROR_MESSAGES.PERCENTAGE_RANGE })
+    .max(100, { message: ERROR_MESSAGES.PERCENTAGE_RANGE }),
+  yearOfCompletion: z.number({ required_error: ERROR_MESSAGES.REQUIRED("Year of completion") })
+    .min(1900, { message: ERROR_MESSAGES.INVALID_YEAR }),
+  // Location
+  city: commonValidators.stringField("City"),
 });
 
-
-module.exports = {signupSchema , loginSchema};
+module.exports = {
+  signupSchema,
+  loginSchema,
+  // Export validators for potential reuse in other schemas
+  commonValidators,
+};
